@@ -16,16 +16,17 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  std::printf("begin test\n");
   // halt 位于 ROM 的最后一条指令。在执行 EBREAK 前验证 1 + ... + 10。
   const uint32_t halt_pc = (rom_size - 1) * 4;
   while (true) {
     if (pc == halt_pc && gpr[10] != 55) {
-      std::printf("test failed: x10 = %u, expected 55\n", gpr[10]);
-      return 1;
+        std::printf("test failed: x10 = %u, expected 55\n", gpr[10]);
+        return 1;
     }
 
-    if (!cpu_step()) {
-      return 1;
+    if (cpu_step()) {
+        std::printf("test:pc = %u, x10 = %u\n", pc, gpr[10]);
     }
   }
 }
