@@ -67,29 +67,34 @@ extern "C" int imem_read(int address){
     return rom[address / 4];
 }
 
-void reset_cycle(Vtop &top, VerilatedContext &context){
-    top.clk = 0;
+void eval_and_dump(
+    Vtop &top,
+    VerilatedContext &context,
+    VerilatedFstC &trace
+) {
     top.eval();
-
-    top.clk = 1;
-    top.reset = 1;
-    top.eval();
-    context.timeInc(1);
-
-    top.clk = 0;
-    top.reset = 0;
-    top.eval();
+    trace.dump(context.time());
     context.timeInc(1);
 }
 
-void clock_cycle(Vtop &top, VerilatedContext &context){
+void reset_cycle(Vtop &top, VerilatedContext &context, VerilatedFstC &trace){
+    top.reset = 1;
     top.clk = 0;
-    top.eval();
-    context.timeInc(1);
+    eval_and_dump(top, context, trace);
 
     top.clk = 1;
-    top.eval();
-    context.timeInc(1);
+    eval_and_dump(top, context, trace);
+
+    top.reset = 0;
+    eval_and_dump(top, context, trace);
+}
+
+void clock_cycle(Vtop &top, VerilatedContext &context, VerilatedFstC &trace){
+    top.clk = 0;
+    eval_and_dump(top, context, trace);
+
+    top.clk = 1;
+    eval_and_dump(top, context, trace);
 }
 
 int main(int argc, char **argv) {
@@ -106,19 +111,17 @@ int main(int argc, char **argv) {
     // 处理 ROM 和 Mem
     load_rom(rom, rom_size, "csrc/inst.txt");
 
-    trace.dump(context.time());
-
-    reset_cycle(top, context);
+    reset_cycle(top, context, trace);
     for (int i = 0; i < 100; i++) {
-        clock_cycle(top, context);
+        clock_cycle(top, context, trace);
 
-        context.timeInc(1);
         if(top.ebreak == 1){
             std::fprintf(stdout, "cpu finish!\n");
-            exit(0);
+            break;
         }
     }
     top.final();
+    trace.close();
 
     return 0;
 }

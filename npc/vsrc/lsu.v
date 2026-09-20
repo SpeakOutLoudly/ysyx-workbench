@@ -16,11 +16,13 @@ module lsu (
   // 由访存控制子模块生成访问宽度、写掩码和加载扩展方式，再通过 DPI-C 访存。
   wire [3:0] write_mask;
   wire [1:0] access_size;
-  wire [31:0] raw_data, selected_data;
+  wire [31:0] selected_data;
   wire [31:0] shifted_store_data;
   wire [4:0] shift_amount;
   wire [7:0] dpi_write_mask;
   wire unsigned_load;
+
+  reg [31:0] raw_data;
 
   mac mac(
     .funct3(funct3),
@@ -33,7 +35,12 @@ module lsu (
   );
 
   // DPI-C Memory 总是读取包含目标地址的整个 32 位对齐字。
-  assign raw_data = mem_read ? pmem_read(address) : 32'b0;
+  always @(*) begin
+    raw_data = 32'b0;
+
+    if (mem_read)
+      raw_data = pmem_read(address);
+  end
 
   // address[1:0] 表示目标数据位于 32 位字中的字节位置。
   assign shift_amount = {address[1:0], 3'b000};
