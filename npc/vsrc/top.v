@@ -53,7 +53,6 @@ module top(
 
   idu u_idu (
     .clk         (clk),
-    .reset       (reset),
     .inst        (if_inst),
     .wb_we       (wb_we),
     .wb_rd       (wb_rd),

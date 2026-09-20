@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <stdio.h>
+
 
 // 用 cpu_step 来 difftest
 extern bool cpu_step();
@@ -13,8 +15,11 @@ extern void ref_get_regs();
 extern bool check_regs();
 extern bool load_rom(uint32_t rom[], uint32_t &rom_size, const char *filename);
 
+constexpr uint32_t PMEM_SIZE = 4096;
+uint8_t pmem[PMEM_SIZE] = {};
+
 uint32_t rom[256] = {};
-int rom_size = 0;
+uint32_t rom_size = 0;
 
 extern "C" int pmem_read(int raddr) {
   // 总是读取地址为`raddr & ~0x3u`的4字节返回
@@ -42,9 +47,9 @@ extern "C" void pmem_write(int waddr, int wdata, char wmask) {
   // 如`wmask = 0x3`代表只写入最低2个字节, 内存中的其它字节保持不变
     const uint32_t address = static_cast<uint32_t>(waddr);
     const uint32_t aligned = address & ~0x3u;
-    const mask = static_cast<uint8_t>(wmask);
-    const wdata = static_cast<uint32_t>(wdata);
-    if (aligned_address > PMEM_SIZE - 4) {
+    const uint8_t mask = static_cast<uint8_t>(wmask);
+    const uint32_t data = static_cast<uint32_t>(wdata);
+    if (aligned > PMEM_SIZE - 4) {
         std::fprintf(stderr,
                      "pmem_write out of bounds: address = 0x%08x\n",
                      address);
@@ -52,14 +57,39 @@ extern "C" void pmem_write(int waddr, int wdata, char wmask) {
     }
 
     for(uint32_t t = 0; t < 4; t ++){
-        if(mask & (1u << t) != 0){
-            pmem[aligned + t] = static_cast<uint8_t>(wdata << (t * 8)); 
+        if((mask & (1u << t)) != 0){
+            pmem[aligned + t] = static_cast<uint8_t>(data >> (t * 8)); 
         }
     }
 }
 
 extern "C" int imem_read(int address){
     return rom[address / 4];
+}
+
+void reset_cycle(Vtop &top, VerilatedContext &context){
+    top.clk = 0;
+    top.eval();
+
+    top.clk = 1;
+    top.reset = 1;
+    top.eval();
+    context.timeInc(1);
+
+    top.clk = 0;
+    top.reset = 0;
+    top.eval();
+    context.timeInc(1);
+}
+
+void clock_cycle(Vtop &top, VerilatedContext &context){
+    top.clk = 0;
+    top.eval();
+    context.timeInc(1);
+
+    top.clk = 1;
+    top.eval();
+    context.timeInc(1);
 }
 
 int main(int argc, char **argv) {
@@ -74,18 +104,19 @@ int main(int argc, char **argv) {
     trace.open("test_wave.fst");
 
     // 处理 ROM 和 Mem
-    load_rom(rom, rom_size, "inst.txt");
-    
+    load_rom(rom, rom_size, "csrc/inst.txt");
+
+    trace.dump(context.time());
+
+    reset_cycle(top, context);
     for (int i = 0; i < 100; i++) {
-        int a = rand() & 1;
-        int b = rand() & 1;
-        top.a = a;
-        top.b = b;
-        top.eval();
-        trace.dump(context.time());
+        clock_cycle(top, context);
+
         context.timeInc(1);
-        printf("a = %d, b = %d, f = %d\n", a, b, top.f);
-        assert(top.f == (a ^ b));
+        if(top.ebreak == 1){
+            std::fprintf(stdout, "cpu finish!\n");
+            exit(0);
+        }
     }
     top.final();
 

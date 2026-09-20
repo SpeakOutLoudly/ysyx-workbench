@@ -7,8 +7,14 @@ all:
 
 sim:
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
-	@echo "Write this Makefile by your self."
-	verilator -Wall --cc --trace-fst --exe --build --Mdir $(BUILD_DIR)/obj_dir --top-module top $(abspath vsrc/top.v) $(abspath csrc/main.cpp)
+	@echo "Write this Makefile by your self."  
+	@mkdir -p $(BUILD_DIR)/obj_dir
+	verilator -Wall -Wno-fatal -Wno-DECLFILENAME \
+	--cc --trace-fst --exe --build -Ivsrc \
+	--Mdir $(BUILD_DIR)/obj_dir --top-module top \
+	 $(abspath vsrc/top.v) \
+	 $(abspath csrc/main.cpp) \
+	 $(abspath csrc/utils.cpp)
 	$(BUILD_DIR)/obj_dir/Vtop
 
 minirvEMU:

@@ -16,10 +16,10 @@ module decoder (
   output wire        ebreak
 );
     wire [6:0]opcode;
-    wire [6:0]funct7;
+    //wire [6:0]funct7;
 
     assign opcode = inst[6:0];
-    assign funct7 = inst[31:25];
+    //assign funct7 = inst[31:25];
     assign funct3 = inst[14:12];
     assign ebreak = (inst == 32'h00100073) ? 1 : 0;
     
@@ -48,6 +48,17 @@ module decoder (
                 alu_op = {1'b0, funct3,
                           ((funct3 == 3'b000) && inst[30])};
                 reg_write = 1'b1;
+            end
+            7'b1100011: begin       // B-type
+                branch = 1;
+                imm_type = 3'b010;
+                reg_write = 0;
+            end
+            7'b1101111: begin       // jal
+                jal       = 1;
+                imm_type  = 3'b011;
+                reg_write = 1;
+                wb_sel    = 2'b10;
             end
             7'b1100111: begin       // jalr
                 alu_src_imm = 1'b1;
