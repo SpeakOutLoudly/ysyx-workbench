@@ -9,6 +9,7 @@ module decoder (
   output reg         mem_write,
   output reg         reg_write,
   output reg  [1:0]  wb_sel,
+  output reg  [1:0]  op1_sel,
   output reg         branch,
   output reg         jal,
   output reg         jalr,
@@ -32,6 +33,7 @@ module decoder (
         mem_write  = 1'b0;
         reg_write  = 1'b0;
         wb_sel     = 2'b00;
+        op1_sel     = 2'b00;
         branch     = 1'b0;
         jal        = 1'b0;
         jalr       = 1'b0;
@@ -40,6 +42,7 @@ module decoder (
                 alu_op = {1'b0, funct3, 1'b0};
                 reg_write = 1'b1;
                 alu_src_imm = 1'b1;
+                wb_sel = 2'b00; // 写回 alu结果
             end
             7'b0110011: begin       // OP
                 alu_op = {1'b0, funct3,
@@ -50,25 +53,36 @@ module decoder (
                 alu_src_imm = 1'b1;
                 jalr = 1'b1;
                 reg_write = 1'b1;
-                wb_sel = 2'b10;
+                wb_sel = 2'b10; // 写回PC+4
             end
             7'b0000011: begin       // Load
                 alu_op = 5'b00000;  // 加法
                 alu_src_imm = 1'b1;
-                wb_sel = inst[13:12];
                 mem_read = 1'b1;
                 reg_write = 1'b1;
+                wb_sel = 2'b01; // 写回读出的内存值
             end
             7'b0100011: begin       // Store
                 alu_op = 5'b00000;
                 alu_src_imm = 1'b1;
-                wb_sel = inst[13:12];
                 mem_write = 1'b1;
+                imm_type = 3'b001;
             end
             7'b0110111: begin       // U-type
-                s
+            // TODO 这里 U-type只识别 lui ，后面还要加入 auipc
+                alu_op = 5'b00000;
+                alu_src_imm = 1'b1;
+                reg_write = 1'b1;
+                wb_sel = 2'b00;
+                op1_sel = 2'b01;    // op1 为0
+                imm_type = 3'b100;
             end
-
+            default: begin          // 未知指令
+                alu_op = {1'b0, funct3, 1'b0};
+                reg_write = 1'b0;
+                alu_src_imm = 1'b1;
+                wb_sel = 2'b00; 
+            end
         endcase
     end
 endmodule

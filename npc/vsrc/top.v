@@ -26,6 +26,7 @@ module top(
   wire        id_mem_write;
   wire        id_reg_write;
   wire [1:0]  id_wb_sel;
+  wire [1:0]  id_op1_sel;
   wire        id_branch;
   wire        id_jal;
   wire        id_jalr;
@@ -68,6 +69,7 @@ module top(
     .mem_write   (id_mem_write),
     .reg_write   (id_reg_write),
     .wb_sel      (id_wb_sel),
+    .op1_sel     (id_op1_sel),
     .branch      (id_branch),
     .jal         (id_jal),
     .jalr        (id_jalr),
@@ -81,6 +83,7 @@ module top(
     .imm            (id_imm),
     .funct3         (id_funct3),
     .alu_op         (id_alu_op),
+    .op1_sel        (id_op1_sel),
     .alu_src_imm    (id_alu_src_imm),
     .branch         (id_branch),
     .jal            (id_jal),

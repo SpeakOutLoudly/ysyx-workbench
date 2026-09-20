@@ -4,10 +4,9 @@ module ifu (
   input  wire        reset,
   input  wire        redirect_valid,
   input  wire [31:0] redirect_pc,
-  output wire [31:0] pc,
+  output reg [31:0] pc,
   output wire [31:0] inst
 );
-endmodule
 
 pc_update pu(
     .clk(clk),
@@ -22,13 +21,16 @@ instruction_memory inst_mem(
     .inst(inst)
 );
 
+endmodule
+
+
 // PC 更新子模块，只声明接口，暂不实现。
 module pc_update (
   input  wire        clk,
   input  wire        reset,
   input  wire        redirect_valid,
   input  wire [31:0] redirect_pc,
-  output wire [31:0] pc
+  output reg [31:0] pc
 );
 
   always @(posedge clk) begin

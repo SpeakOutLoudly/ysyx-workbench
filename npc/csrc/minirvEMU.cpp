@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-extern bool load_rom(uint32_t rom[], uint32_t &rom_size, uint32_t &pc, const char *filename);
+extern bool load_rom(uint32_t rom[], uint32_t &rom_size, const char *filename);
 
 // ROM 按字存放指令。PC 是字节地址，因此取指时使用 pc / 4 作为下标。
 uint32_t rom[128] = {};
