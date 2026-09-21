@@ -10,6 +10,7 @@ module top(
   input  wire        reset,
   output wire        ebreak,
   output wire [31:0] debug_pc,
+  output wire [31:0] halt_code,
   output wire [31:0] debug_inst
 );
   wire [31:0] if_pc;
@@ -72,7 +73,8 @@ module top(
     .branch      (id_branch),
     .jal         (id_jal),
     .jalr        (id_jalr),
-    .ebreak      (ebreak)
+    .ebreak      (ebreak),
+    .halt_code   (halt_code)
   );
 
   exu u_exu (

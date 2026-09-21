@@ -8,7 +8,8 @@ module RegisterFile #(ADDR_WIDTH = 1, DATA_WIDTH = 1) (
     input [ADDR_WIDTH-1:0] raddr_rs2,
     
     output [DATA_WIDTH-1:0]rdata_rs1,
-    output [DATA_WIDTH-1:0]rdata_rs2
+    output [DATA_WIDTH-1:0]rdata_rs2,
+    output [DATA_WIDTH-1:0]halt_code
 );
     reg [DATA_WIDTH-1:0] rf [2**ADDR_WIDTH-1:0];
     always @(posedge clk) begin
@@ -16,4 +17,5 @@ module RegisterFile #(ADDR_WIDTH = 1, DATA_WIDTH = 1) (
     end
     assign rdata_rs1 = (raddr_rs1 == 0) ? 0 : rf[raddr_rs1];
     assign rdata_rs2 = (raddr_rs2 == 0) ? 0 : rf[raddr_rs2];
+    assign halt_code = rf[10];
 endmodule

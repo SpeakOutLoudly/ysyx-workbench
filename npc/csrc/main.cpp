@@ -13,6 +13,7 @@
 
 uint8_t pmem[PMEM_SIZE] = {};
 size_t nread;
+int32_t code = -1;
 
 // 用 cpu_step 来 difftest
 extern bool cpu_step();
@@ -115,12 +116,17 @@ int main(int argc, char **argv) {
         clock_cycle(top, context, trace);
 
         if(top.ebreak == 1){
-            std::fprintf(stdout, "cpu finish!\n");
+            code = static_cast<int32_t>(top.halt_code);
+            if(code == 0){
+                std::fprintf(stdout, "HIT GOOD TRAP\n");
+            } else {
+                std::fprintf(stdout, "HIT BAD TRAP\n");
+            }
             break;
         }
     }
     top.final();
     trace.close();
 
-    return 0;
+    return code == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

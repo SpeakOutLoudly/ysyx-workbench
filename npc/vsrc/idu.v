@@ -26,7 +26,8 @@ module idu (
   output wire        branch,
   output wire        jal,
   output wire        jalr,
-  output wire        ebreak
+  output wire        ebreak,
+  output wire [31:0] halt_code
 );
   // TODO: 实例化并连接 register_file、imm_extender 和 decoder。
 
@@ -41,7 +42,8 @@ module idu (
       .raddr_rs1(inst[19:15]),    // 直接取低4位截断。
       .raddr_rs2(inst[24:20]),
       .rdata_rs1(rs1_data),
-      .rdata_rs2(rs2_data)
+      .rdata_rs2(rs2_data),
+      .halt_code(halt_code)
   );
 
   imm_extender extender(
