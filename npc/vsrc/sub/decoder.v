@@ -79,13 +79,20 @@ module decoder (
                 mem_write = 1'b1;
                 imm_type = 3'b001;
             end
-            7'b0110111: begin       // U-type
-            // TODO 这里 U-type只识别 lui ，后面还要加入 auipc
+            7'b0110111: begin       // U-type lui
                 alu_op = 5'b00000;
                 alu_src_imm = 1'b1;
                 reg_write = 1'b1;
                 wb_sel = 2'b00;
                 op1_sel = 2'b01;    // op1 为0
+                imm_type = 3'b100;
+            end
+            7'b0010111: begin       // U-type auipc
+                alu_op = 5'b00000;
+                alu_src_imm = 1'b1;
+                reg_write = 1'b1;
+                wb_sel = 2'b00;
+                op1_sel = 2'b10;    // op1 为pc
                 imm_type = 3'b100;
             end
             default: begin          // 未知指令

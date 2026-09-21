@@ -9,7 +9,7 @@ module pc_update (
 
   always @(posedge clk) begin
         if(reset) begin
-            pc <= 0;
+            pc <= 32'h80000000;
         end
         else begin
             if(redirect_valid)

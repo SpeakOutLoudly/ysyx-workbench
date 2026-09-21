@@ -1,7 +1,11 @@
 `include "sub/mac.v"
 
 // 访存阶段，对Mem进行操作，这里 Mem 用 C++写。
+`ifndef PMEM_READ
+`define PMEM_READ 
 import "DPI-C" function int pmem_read(input int raddr);
+`endif
+
 import "DPI-C" function void pmem_write(
   input int waddr, input int wdata, input byte wmask);
 

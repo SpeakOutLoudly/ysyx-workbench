@@ -20,6 +20,7 @@ pc_update pu(
 );
 
 imem inst_mem(
+    .reset(reset),
     .address(pc),
     .inst(inst)
 );

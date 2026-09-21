@@ -1,8 +1,17 @@
-import "DPI-C" function int imem_read(input int address);
+`ifndef PMEM_READ
+`define PMEM_READ
+import "DPI-C" function int pmem_read(input int raddr);
+`endif
 module imem (
+  input  wire        reset,
   input  wire [31:0] address,
-  output wire [31:0] inst
+  output reg  [31:0] inst
 );
 
-  assign inst = imem_read(address);
+  always @(*) begin
+    if (reset)
+      inst = 32'h00000013;
+    else
+      inst = pmem_read(address);
+  end
 endmodule

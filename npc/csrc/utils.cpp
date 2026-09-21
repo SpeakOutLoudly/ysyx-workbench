@@ -2,10 +2,43 @@
 #include <cstdint>
 #include <cinttypes>
 #include <cstdio>
+#include <cstdlib>
+#include "defines.h"
 
 bool check_regs(){
     return false;
 }
+
+// 从 *.bin 文件中加载指令
+bool load_img(uint8_t pmem[], size_t &nread, const char *filename){
+  FILE *fp = std::fopen(filename, "rb");
+  if(fp == nullptr){
+    std::perror(filename);
+    std::exit(EXIT_FAILURE);
+  }
+
+  std::fseek(fp, 0, SEEK_END);
+  long fsize = std::ftell(fp);
+  std::rewind(fp);
+
+  if(static_cast<uint32_t>(fsize) > PMEM_SIZE || fsize < 0){
+    std::fprintf(stderr, "bin file too large: %ld bytes\n", fsize);
+    std::fclose(fp);
+    std::exit(EXIT_FAILURE);
+  }
+
+  nread = std::fread(pmem, 1, static_cast<size_t>(fsize), fp);
+  std::fclose(fp);
+
+  if (nread != static_cast<size_t>(fsize)) {
+      std::fprintf(stderr, "failed to read complete bin file\n");
+      std::exit(EXIT_FAILURE);
+  }
+
+  return true;
+
+}
+
 
 // 从文本文件读取 ROM。inst.txt 中每条指令使用一行十六进制数表示。
 bool load_rom(uint32_t rom[], uint32_t &rom_size, const char *filename = "inst.txt") {
