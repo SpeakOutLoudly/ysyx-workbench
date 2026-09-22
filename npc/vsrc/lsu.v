@@ -1,16 +1,10 @@
 `include "sub/mac.v"
 
 // 访存阶段，对Mem进行操作，这里 Mem 用 C++写。
-`ifndef PMEM_READ
-`define PMEM_READ 
-import "DPI-C" function int pmem_read(input int raddr);
-`endif
-
-import "DPI-C" function void pmem_write(
-  input int waddr, input int wdata, input byte wmask);
 
 module lsu (
   input  wire        clk,
+  input  wire        inst_valid,
   input  wire [31:0] address,
   input  wire [31:0] store_data,
   input  wire [2:0]  funct3,
@@ -42,9 +36,11 @@ module lsu (
   // DPI-C Memory 总是读取包含目标地址的整个 32 位对齐字。
   always @(*) begin
     raw_data = 32'b0;
+    stall = 1'b0;
 
     if (mem_read)
-      raw_data = pmem_read(address);
+      stall = 1'b1;
+      //raw_data = pmem_read(address);
   end
 
   // address[1:0] 表示目标数据位于 32 位字中的字节位置。
@@ -83,7 +79,7 @@ module lsu (
 
   // 简单 Memory 模型中重复写入同一值没有副作用；后续接入 MMIO 时应改为时钟沿写入。
   always @(posedge clk) begin
-    if (mem_write && write_mask != 4'b0000)
+    if (inst_valid && mem_write && write_mask != 4'b0000)
       pmem_write(address, shifted_store_data, dpi_write_mask);
   end
 endmodule

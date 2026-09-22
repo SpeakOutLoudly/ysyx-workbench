@@ -2,6 +2,7 @@
 module pc_update (
   input  wire        clk,
   input  wire        reset,
+  input  wire        inst_valid,
   input  wire        redirect_valid,
   input  wire [31:0] redirect_pc,
   output reg [31:0] pc
@@ -11,12 +12,14 @@ module pc_update (
         if(reset) begin
             pc <= 32'h80000000;
         end
-        else begin
+        else if(inst_valid) begin
             if(redirect_valid)
                 pc <= redirect_pc;
             else
                 pc <= pc + 4;
         end
+        else      // _wait 状态 pc 不更新
+            pc <= pc;
   end
 
 endmodule

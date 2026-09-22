@@ -4,11 +4,13 @@ OBJ_DIR   := $(BUILD_DIR)/obj_dir
 NPC_EXEC  := $(OBJ_DIR)/Vtop
 
 VERILOG_SRCS := $(abspath vsrc/top.v)
-VERILOG_DEPS := $(wildcard vsrc/*.v vsrc/sub/*.v)
+VERILOG_DEPS := $(wildcard vsrc/*.v vsrc/*.vh vsrc/sub/*.v)
 CPP_SRCS     := $(abspath csrc/main.cpp) \
+                $(abspath csrc/minirvEMU.cpp) \
                 $(abspath csrc/utils.cpp)
+CPP_HDRS     := $(wildcard csrc/*.h)
 
-$(NPC_EXEC): $(VERILOG_DEPS) $(CPP_SRCS)
+$(NPC_EXEC): $(VERILOG_DEPS) $(CPP_SRCS) $(CPP_HDRS)
 	@mkdir -p $(OBJ_DIR)
 	verilator -Wall -Wno-fatal -Wno-DECLFILENAME \
 	  --cc --trace-fst --exe --build -Ivsrc \
@@ -24,6 +26,7 @@ sim:
 	--Mdir $(BUILD_DIR)/obj_dir --top-module top \
 	 $(abspath vsrc/top.v) \
 	 $(abspath csrc/main.cpp) \
+	 $(abspath csrc/minirvEMU.cpp) \
 	 $(abspath csrc/utils.cpp)
 	$(BUILD_DIR)/obj_dir/Vtop
 

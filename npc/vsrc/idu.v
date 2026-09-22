@@ -6,6 +6,7 @@ module idu (
   input  wire        clk,
   input  wire [31:0] inst,
 
+  input  wire        inst_valid,
   input  wire        wb_we,
   input  wire [4:0]  wb_rd,
   input  wire [31:0] wb_data,
@@ -39,6 +40,7 @@ module idu (
       .wdata(wb_data),
       .waddr(wb_rd),
       .wen(wb_we),
+      .inst_valid(inst_valid),
       .raddr_rs1(inst[19:15]),    // 直接取低4位截断。
       .raddr_rs2(inst[24:20]),
       .rdata_rs1(rs1_data),

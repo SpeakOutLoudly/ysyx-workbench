@@ -7,23 +7,42 @@ module ifu (
   input  wire        reset,
   input  wire        redirect_valid,
   input  wire [31:0] redirect_pc,
+  output wire inst_valid,
   output reg [31:0] pc,
   output wire [31:0] inst
 );
+    reg state, nstate;
 
-pc_update pu(
-    .clk(clk),
-    .reset(reset),
-    .redirect_valid(redirect_valid),
-    .redirect_pc(redirect_pc),
-    .pc(pc)
-);
+    always @(posedge clk) begin
+        if (reset)
+        state <= _wait;
+        else
+        state <= nstate;
+    end
 
-imem inst_mem(
-    .reset(reset),
-    .address(pc),
-    .inst(inst)
-);
+    always @(*) begin
+        case(state)
+        _wait: nstate = _idle;
+        _idle: nstate = _wait;
+        endcase
+    end
+    assign inst_valid = (state == _wait);
+    
+    pc_update pu(
+        .clk(clk),
+        .reset(reset),
+        .inst_valid(inst_valid),
+        .redirect_valid(redirect_valid),
+        .redirect_pc(redirect_pc),
+        .pc(pc)
+    );
+
+    imem inst_mem(
+        .reset(reset),
+        .inst_valid(inst_valid),
+        .pc(pc),
+        .inst(inst)
+    );
 
 endmodule
 

@@ -1,3 +1,4 @@
+`include "vsrc/defines.vh"
 `include "vsrc/ifu.v"
 `include "vsrc/idu.v"
 `include "vsrc/exu.v"
@@ -9,12 +10,14 @@ module top(
   input  wire        clk,
   input  wire        reset,
   output wire        ebreak,
+  output wire        exec_valid,
   output wire [31:0] debug_pc,
   output wire [31:0] halt_code,
   output wire [31:0] debug_inst
 );
   wire [31:0] if_pc;
   wire [31:0] if_inst;
+  wire        if_inst_valid;
 
   wire [31:0] id_rs1_data;
   wire [31:0] id_rs2_data;
@@ -48,6 +51,7 @@ module top(
     .reset          (reset),
     .redirect_valid (ex_redirect_valid),
     .redirect_pc    (ex_redirect_pc),
+    .inst_valid     (if_inst_valid),
     .pc             (if_pc),
     .inst           (if_inst)
   );
@@ -55,6 +59,7 @@ module top(
   idu u_idu (
     .clk         (clk),
     .inst        (if_inst),
+    .inst_valid  (if_inst_valid),
     .wb_we       (wb_we),
     .wb_rd       (wb_rd),
     .wb_data     (wb_data),
@@ -97,6 +102,7 @@ module top(
 
   lsu u_lsu (
     .clk        (clk),
+    .inst_valid (if_inst_valid),
     .address    (ex_alu_result),
     .store_data (ex_store_data),
     .funct3     (id_funct3),
@@ -119,4 +125,5 @@ module top(
 
   assign debug_pc = if_pc;
   assign debug_inst = if_inst;
+  assign exec_valid = !reset && (if_inst_valid);
 endmodule

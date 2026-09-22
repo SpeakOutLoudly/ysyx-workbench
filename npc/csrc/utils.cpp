@@ -5,10 +5,6 @@
 #include <cstdlib>
 #include "defines.h"
 
-bool check_regs(){
-    return false;
-}
-
 // 从 *.bin 文件中加载指令
 bool load_img(uint8_t pmem[], size_t &nread, const char *filename){
   FILE *fp = std::fopen(filename, "rb");
@@ -74,4 +70,3 @@ bool load_rom(uint32_t rom[], uint32_t &rom_size, const char *filename = "inst.t
   rom_size = count;
   return true;
 }
-

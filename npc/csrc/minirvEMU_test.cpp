@@ -1,32 +1,44 @@
+#include "defines.h"
+#include "minirvEMU.h"
+
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 
-extern uint32_t rom[128];
-extern uint32_t rom_size;
-extern uint32_t gpr[16];
-extern uint32_t pc;
+bool load_img(uint8_t pmem[], size_t &nread, const char *filename);
 
-bool load_rom(uint32_t rom[], uint32_t &rom_size, uint32_t &pc,
-              const char *filename);
-bool cpu_step();
+static uint8_t image[PMEM_SIZE] = {};
 
 int main(int argc, char **argv) {
-  const char *inst_file = argc > 1 ? argv[1] : "csrc/inst.txt";
-  if (!load_rom(rom, rom_size, pc, inst_file)) {
-    return 1;
+  if (argc != 2) {
+    std::fprintf(stderr, "Usage: %s IMAGE.bin\n", argv[0]);
+    return EXIT_FAILURE;
   }
 
-  std::printf("begin test\n");
-  // halt 位于 ROM 的最后一条指令。在执行 EBREAK 前验证 1 + ... + 10。
-  const uint32_t halt_pc = (rom_size - 1) * 4;
-  while (true) {
-    if (pc == halt_pc && gpr[10] != 55) {
-        std::printf("test failed: x10 = %u, expected 55\n", gpr[10]);
-        return 1;
-    }
+  size_t image_size = 0;
+  load_img(image, image_size, argv[1]);
+  minirv::Emulator ref;
+  ref.reset(image, image_size);
 
-    if (cpu_step()) {
-        std::printf("test:pc = %u, x10 = %u\n", pc, gpr[10]);
+  constexpr uint64_t kMaxSteps = 10000000;
+  for (uint64_t count = 0; count < kMaxSteps; ++count) {
+    const minirv::StepResult step = ref.step(count / 100);
+    if (!step.ok) {
+      std::fprintf(stderr, "minirvEMU error at pc=0x%08x inst=0x%08x: %s\n",
+                   step.pc, step.inst, step.error.c_str());
+      return EXIT_FAILURE;
     }
+    if (step.halted) {
+      const int32_t code = static_cast<int32_t>(ref.reg(10));
+      std::printf("%s (a0=%d, instructions=%llu)\n",
+                  code == 0 ? "HIT GOOD TRAP" : "HIT BAD TRAP", code,
+                  static_cast<unsigned long long>(count));
+      return code == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
+    if (step.store && step.store_address == minirv::kUartAddress)
+      std::fputc(step.store_data & 0xffu, stderr);
   }
+  std::fprintf(stderr, "minirvEMU timeout after %llu instructions\n",
+               static_cast<unsigned long long>(kMaxSteps));
+  return EXIT_FAILURE;
 }
