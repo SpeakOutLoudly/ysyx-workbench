@@ -10,6 +10,7 @@ import "DPI-C" function void pmem_write(
   input int waddr, input int wdata, input byte wmask);
 
 module lsu (
+  input  wire        clk,
   input  wire [31:0] address,
   input  wire [31:0] store_data,
   input  wire [2:0]  funct3,
@@ -81,7 +82,7 @@ module lsu (
   end
 
   // 简单 Memory 模型中重复写入同一值没有副作用；后续接入 MMIO 时应改为时钟沿写入。
-  always @(*) begin
+  always @(posedge clk) begin
     if (mem_write && write_mask != 4'b0000)
       pmem_write(address, shifted_store_data, dpi_write_mask);
   end

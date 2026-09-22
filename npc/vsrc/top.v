@@ -96,6 +96,7 @@ module top(
   );
 
   lsu u_lsu (
+    .clk        (clk),
     .address    (ex_alu_result),
     .store_data (ex_store_data),
     .funct3     (id_funct3),

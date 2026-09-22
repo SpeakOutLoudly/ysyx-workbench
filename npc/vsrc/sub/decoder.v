@@ -39,14 +39,13 @@ module decoder (
         jalr       = 1'b0;
         case(opcode)
             7'b0010011: begin       // OP-IMM
-                alu_op = {1'b0, funct3, 1'b0};
+                alu_op = {1'b0, funct3, ((funct3 == 3'b101) ? inst[30] : 1'b0)};
                 reg_write = 1'b1;
                 alu_src_imm = 1'b1;
                 wb_sel = 2'b00; // 写回 alu结果
             end
             7'b0110011: begin       // OP
-                alu_op = {1'b0, funct3,
-                          ((funct3 == 3'b000) && inst[30])};
+                alu_op = {1'b0, funct3, inst[30]};
                 reg_write = 1'b1;
             end
             7'b1100011: begin       // B-type
