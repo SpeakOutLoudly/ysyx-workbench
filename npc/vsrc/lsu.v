@@ -4,7 +4,8 @@
 
 module lsu (
   input  wire        clk,
-  input  wire        inst_valid,
+  input  wire        commit_valid,
+  input  wire        load_read_en,
   input  wire [31:0] address,
   input  wire [31:0] store_data,
   input  wire [2:0]  funct3,
@@ -36,11 +37,8 @@ module lsu (
   // DPI-C Memory 总是读取包含目标地址的整个 32 位对齐字。
   always @(*) begin
     raw_data = 32'b0;
-    stall = 1'b0;
-
-    if (mem_read)
-      stall = 1'b1;
-      //raw_data = pmem_read(address);
+    if (mem_read && load_read_en)
+      raw_data = pmem_read(address);
   end
 
   // address[1:0] 表示目标数据位于 32 位字中的字节位置。
@@ -77,10 +75,9 @@ module lsu (
     end
   end
 
-  // 简单 Memory 模型中重复写入同一值没有副作用；后续接入 MMIO 时应改为时钟沿写入。
+  // Store 只在指令提交的时钟沿写入，避免等待拍重复写 MMIO。
   always @(posedge clk) begin
-    if (inst_valid && mem_write && write_mask != 4'b0000)
+    if (commit_valid && mem_write && write_mask != 4'b0000)
       pmem_write(address, shifted_store_data, dpi_write_mask);
   end
 endmodule
-
