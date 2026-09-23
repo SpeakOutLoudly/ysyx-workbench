@@ -5,47 +5,53 @@
 module ifu (
   input  wire        clk,
   input  wire        reset,
+  input  wire        lsu_respValid,
   input  wire        redirect_valid,
   input  wire [31:0] redirect_pc,
   output wire        commit_valid,
-  output wire        load_read_en,
+  output wire        lsu_reqValid,
   output reg [31:0]  pc,
   output wire [31:0] inst
 );
-    wire is_load;
-    wire fetch_valid;
+    wire mem_access;
+    wire ifu_reqValid;
+    wire respValid, ifu_respValid;
     reg [1:0] state, nstate;
 
     always @(posedge clk) begin
         if (reset)
-        state <= _wait;
+        state <= _idle;
         else
         state <= nstate;
     end
 
     always @(*) begin
         case(state)
-        _wait:  nstate = _idle;
-        _idle:  begin
-            if (is_load) begin
-                nstate = _sload;
-            end
+        _wait:  begin
+            if(respValid)
+                nstate = _idle;
             else
                 nstate = _wait;
         end
-        _sload: nstate = _wait;
-        default: nstate = _wait;
+        _idle:  begin
+            if (mem_access) begin
+                nstate = _wait;
+            end
+            else
+                nstate = _idle;
+        end
+        default: nstate = _idle;
         endcase
     end
 
-    assign is_load = (inst[6:0] == 7'b0000011);
+    assign respValid = ifu_respValid || lsu_respValid;
+    assign mem_access = (inst[6:0] == 7'b0000011) || (inst[6:0] == 7'b0100011);
     assign commit_valid = !reset &&
-                          ((state == _idle && !is_load) || (state == _sload));
-    assign load_read_en = !reset && (state == _sload) && is_load;
+                          ((state == _idle && !mem_access) || (state == _wait && respValid));
+    
     // 没有指令寄存器：PC 在提交前保持不变，三个状态都需看到同一条指令。
-    assign fetch_valid = !reset &&
-                         ((state == _wait) || (state == _idle) ||
-                          (state == _sload));
+    assign ifu_reqValid = !reset && (state == _idle);
+    assign lsu_reqValid = !reset && (state == _idle) && mem_access;
 
     pc_update pu(
         .clk(clk),
@@ -58,8 +64,9 @@ module ifu (
 
     imem inst_mem(
         .reset(reset),
-        .fetch_valid(fetch_valid),
+        .ifu_reqValid(ifu_reqValid),
         .pc(pc),
+        .ifu_respValid(ifu_respValid),
         .inst(inst)
     );
 
