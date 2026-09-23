@@ -18,7 +18,9 @@ module top(
   wire [31:0] if_pc;
   wire [31:0] if_inst;
   wire        if_commit_valid;
-  wire        if_load_read_en;
+  wire        ls_active;
+  wire        ls_req_valid;
+  wire        ls_resp_valid;
 
   wire [31:0] id_rs1_data;
   wire [31:0] id_rs2_data;
@@ -50,10 +52,12 @@ module top(
   ifu u_ifu (
     .clk            (clk),
     .reset          (reset),
+    .lsu_resp_valid (ls_resp_valid),
     .redirect_valid (ex_redirect_valid),
     .redirect_pc    (ex_redirect_pc),
     .commit_valid   (if_commit_valid),
-    .load_read_en   (if_load_read_en),
+    .lsu_active     (ls_active),
+    .lsu_req_valid  (ls_req_valid),
     .pc             (if_pc),
     .inst           (if_inst)
   );
@@ -103,14 +107,14 @@ module top(
   );
 
   lsu u_lsu (
-    .clk        (clk),
-    .commit_valid  (if_commit_valid),
-    .load_read_en  (if_load_read_en),
+    .active     (ls_active),
+    .req_valid  (ls_req_valid),
     .address    (ex_alu_result),
     .store_data (ex_store_data),
     .funct3     (id_funct3),
     .mem_read   (id_mem_read),
     .mem_write  (id_mem_write),
+    .resp_valid (ls_resp_valid),
     .load_data  (ls_load_data)
   );
 

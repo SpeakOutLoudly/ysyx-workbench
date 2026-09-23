@@ -18,7 +18,7 @@ module pc_update (
             else
                 pc <= pc + 4;
         end
-        else      // _wait 状态 pc 不更新
+        else      // 指令尚未提交时 PC 保持不变
             pc <= pc;
   end
 

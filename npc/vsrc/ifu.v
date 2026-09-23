@@ -5,53 +5,77 @@
 module ifu (
   input  wire        clk,
   input  wire        reset,
-  input  wire        lsu_respValid,
+  input  wire        lsu_resp_valid,
   input  wire        redirect_valid,
   input  wire [31:0] redirect_pc,
   output wire        commit_valid,
-  output wire        lsu_reqValid,
-  output reg [31:0]  pc,
+  output wire        lsu_active,
+  output wire        lsu_req_valid,
+  output wire [31:0] pc,
   output wire [31:0] inst
 );
     wire mem_access;
-    wire ifu_reqValid;
-    wire respValid, ifu_respValid;
+    wire ifu_active;
+    wire ifu_req_valid;
+    wire ifu_resp_valid;
+    wire [31:0] fetched_inst;
+    reg [31:0] inst_reg;
     reg [1:0] state, nstate;
 
     always @(posedge clk) begin
-        if (reset)
-        state <= _idle;
-        else
-        state <= nstate;
+        if (reset) begin
+            state <= _fetch_req;
+            inst_reg <= 32'h00000013;
+        end
+        else begin
+            state <= nstate;
+            if (((state == _fetch_req) || (state == _fetch_wait)) &&
+                ifu_resp_valid)
+                inst_reg <= fetched_inst;
+        end
     end
 
     always @(*) begin
-        case(state)
-        _wait:  begin
-            if(respValid)
-                nstate = _idle;
+        nstate = state;
+        case (state)
+        _fetch_req: begin
+            // 当前接口默认存储器总能接收请求；同时兼容零周期响应。
+            if (ifu_resp_valid)
+                nstate = _exec;
             else
-                nstate = _wait;
+                nstate = _fetch_wait;
         end
-        _idle:  begin
-            if (mem_access) begin
-                nstate = _wait;
-            end
+        _fetch_wait: begin
+            if (ifu_resp_valid)
+                nstate = _exec;
+        end
+        _exec: begin
+            if (!mem_access || lsu_resp_valid)
+                nstate = _fetch_req;
             else
-                nstate = _idle;
+                nstate = _dmem_wait;
         end
-        default: nstate = _idle;
+        _dmem_wait: begin
+            if (lsu_resp_valid)
+                nstate = _fetch_req;
+        end
+        default: nstate = _fetch_req;
         endcase
     end
 
-    assign respValid = ifu_respValid || lsu_respValid;
-    assign mem_access = (inst[6:0] == 7'b0000011) || (inst[6:0] == 7'b0100011);
+    assign inst = inst_reg;
+    assign mem_access = (inst_reg[6:0] == 7'b0000011) || (inst_reg[6:0] == 7'b0100011);
     assign commit_valid = !reset &&
-                          ((state == _idle && !mem_access) || (state == _wait && respValid));
-    
-    // 没有指令寄存器：PC 在提交前保持不变，三个状态都需看到同一条指令。
-    assign ifu_reqValid = !reset && (state == _idle);
-    assign lsu_reqValid = !reset && (state == _idle) && mem_access;
+                          (((state == _exec) && !mem_access) ||
+                           ((state == _exec) && mem_access && lsu_resp_valid) ||
+                           ((state == _dmem_wait) && lsu_resp_valid));
+    assign ifu_req_valid = !reset && (state == _fetch_req);
+    assign ifu_active = !reset &&
+                        ((state == _fetch_req) || (state == _fetch_wait));
+    assign lsu_active = !reset &&
+                        (((state == _exec) && mem_access) ||
+                         (state == _dmem_wait));
+    assign lsu_req_valid = !reset && (state == _exec) && mem_access;
 
     pc_update pu(
         .clk(clk),
@@ -63,13 +87,12 @@ module ifu (
     );
 
     imem inst_mem(
-        .reset(reset),
-        .ifu_reqValid(ifu_reqValid),
-        .pc(pc),
-        .ifu_respValid(ifu_respValid),
-        .inst(inst)
+        .reset      (reset),
+        .active     (ifu_active),
+        .req_valid  (ifu_req_valid),
+        .pc         (pc),
+        .resp_valid (ifu_resp_valid),
+        .inst       (fetched_inst)
     );
 
 endmodule
-
-

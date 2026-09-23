@@ -2,6 +2,7 @@
 #include "Vtop___024root.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
+#include "Vtop__Dpi.h"
 #include "defines.h"
 #include "minirvEMU.h"
 
@@ -11,11 +12,10 @@
 #include <cstdlib>
 #include <stdio.h>
 
-#define ADDR_OFF 0x80000000
+
 
 static constexpr uint64_t NPC_FREQ_HZ = 100000000;
 static uint64_t sim_cycles = 0;
-
 static uint64_t get_time() {
     return sim_cycles / (NPC_FREQ_HZ / 1000000);
 }
@@ -26,23 +26,18 @@ int32_t code = -1;
 
 bool load_img(uint8_t pmem[], size_t &nread, const char *filename);
 
-struct NpcStoreEvent {
-    bool valid = false;
-    uint32_t address = 0;
-    uint32_t data = 0;
-    uint8_t mask = 0;
-};
-
 static NpcStoreEvent npc_store;
+static MemRequestEvent ifetch_request;
+static MemRequestEvent dmem_request;
 
-extern "C" int pmem_read(int raddr) {
-  // 总是读取地址为`raddr & ~0x3u`的4字节返回
+// 保留原来的读取主体，在请求延迟结束时调用。
+static uint32_t read_memory_word(int raddr) {
     const uint32_t raw_address = static_cast<uint32_t>(raddr);
     if (raw_address == 0x20000000u) {
-        return static_cast<int>(static_cast<uint32_t>(get_time()));
+        return static_cast<uint32_t>(get_time());
     }
     if (raw_address == 0x20000004u) {
-        return static_cast<int>(static_cast<uint32_t>(get_time() >> 32));
+        return static_cast<uint32_t>(get_time() >> 32);
     }
 
     const uint32_t address = static_cast<uint32_t>(raddr) - ADDR_OFF;
@@ -61,9 +56,11 @@ extern "C" int pmem_read(int raddr) {
         (static_cast<uint32_t>(pmem[aligned_address + 2]) << 16) |
         (static_cast<uint32_t>(pmem[aligned_address + 3]) << 24);
 
-    return static_cast<int>(data);
+    return data;
 }
-extern "C" void pmem_write(int waddr, int wdata, char wmask) {
+
+// 保留原来的写入主体，在写响应被 CPU 接收时调用。
+static void write_memory_word(int waddr, int wdata, char wmask) {
     // 总是往地址为`waddr & ~0x3u`的4字节按写掩码`wmask`写入`wdata`
     // `wmask`中每比特表示`wdata`中1个字节的掩码,
     // 如`wmask = 0x3`代表只写入最低2个字节, 内存中的其它字节保持不变
@@ -92,10 +89,71 @@ extern "C" void pmem_write(int waddr, int wdata, char wmask) {
     }
 }
 
-void eval_and_dump(
-    Vtop &top,
-    VerilatedContext &context,
-    VerilatedFstC &trace
+extern "C" void pmem_read(int raddr, svBit is_fetch, svBit req_valid,
+                          int *rdata, svBit *resp_valid) {
+    MemRequestEvent &request = is_fetch ? ifetch_request : dmem_request;
+
+    // output 参数每次调用都要赋值；等待期间只返回当前事务状态。
+    *rdata = static_cast<int>(request.rdata);
+    *resp_valid = request.resp_valid ? 1 : 0;
+
+    // Verilator 可能在同一周期多次求值，因此一个通道只登记一次请求。
+    if (req_valid && !request.valid) {
+        request = {};
+        request.valid = true;
+        request.write = false;
+        request.address = static_cast<uint32_t>(raddr);
+        request.delay = is_fetch ? FETCH_DELAY : DMEM_DELAY;
+    }
+}
+
+extern "C" void pmem_write(int waddr, int wdata, char wmask,
+                           svBit req_valid, svBit *resp_valid) {
+    *resp_valid = (dmem_request.valid && dmem_request.write &&
+                   dmem_request.resp_valid) ? 1 : 0;
+
+    if (req_valid && !dmem_request.valid) {
+        dmem_request = {};
+        dmem_request.valid = true;
+        dmem_request.write = true;
+        dmem_request.address = static_cast<uint32_t>(waddr);
+        dmem_request.wdata = static_cast<uint32_t>(wdata);
+        dmem_request.wmask = static_cast<uint8_t>(wmask);
+        dmem_request.delay = DMEM_DELAY;
+    }
+}
+
+static void advance_request(MemRequestEvent &request) {
+    if (!request.valid)
+        return;
+
+    // resp_valid 已保持一个周期，刚才的上升沿已经接收该响应。
+    if (request.resp_valid) {
+        if (request.write) {
+            write_memory_word(static_cast<int>(request.address),
+                              static_cast<int>(request.wdata),
+                              static_cast<char>(request.wmask));
+        }
+        request = {};
+        return;
+    }
+
+    if (request.delay > 0)
+        --request.delay;
+
+    if (request.delay == 0) {
+        if (!request.write)
+            request.rdata = read_memory_word(static_cast<int>(request.address));
+        request.resp_valid = true;
+    }
+}
+
+static void memory_tick() {
+    advance_request(ifetch_request);
+    advance_request(dmem_request);
+}
+
+void eval_and_dump(Vtop &top, VerilatedContext &context, VerilatedFstC &trace
 ) {
     top.eval();
     trace.dump(context.time());
@@ -103,6 +161,10 @@ void eval_and_dump(
 }
 
 void reset_cycle(Vtop &top, VerilatedContext &context, VerilatedFstC &trace){
+    ifetch_request = {};
+    dmem_request = {};
+    npc_store = {};
+
     top.reset = 1;
     top.clk = 0;
     eval_and_dump(top, context, trace);
@@ -110,17 +172,23 @@ void reset_cycle(Vtop &top, VerilatedContext &context, VerilatedFstC &trace){
     top.clk = 1;
     eval_and_dump(top, context, trace);
 
+    // 复位结束后停在低电平，让组合逻辑先发出第一个取指请求。
+    top.clk = 0;
     top.reset = 0;
     eval_and_dump(top, context, trace);
 }
 
-void clock_cycle(Vtop &top, VerilatedContext &context, VerilatedFstC &trace){
-    top.clk = 0;
-    eval_and_dump(top, context, trace);
-
+void tick(Vtop &top, VerilatedContext &context, VerilatedFstC &trace){
+    // tick 进入时和返回时都保持低电平；上升沿负责提交当前指令。
     top.clk = 1;
     eval_and_dump(top, context, trace);
+
     ++sim_cycles;
+    memory_tick();
+
+    // 将 memory_tick() 产生的新响应传播到 RTL，但不再产生时钟沿。
+    top.clk = 0;
+    eval_and_dump(top, context, trace);
 }
 
 bool compare_state(const Vtop &top, const minirv::Emulator &ref,
@@ -220,7 +288,7 @@ int main(int argc, char **argv) {
     uint64_t step_count = 0;
     while (true) {
         if(!top.exec_valid){
-            clock_cycle(top, context, trace);
+            tick(top, context, trace);
             continue;
         }
         const minirv::StepResult step = ref.step(get_time());
@@ -256,7 +324,7 @@ int main(int argc, char **argv) {
         }
 
         npc_store.valid = false;
-        clock_cycle(top, context, trace);
+        tick(top, context, trace);
         ++step_count;
         if (!compare_state(top, ref, step, step_count)) {
             passed = false;

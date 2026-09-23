@@ -3,14 +3,14 @@
 // 访存阶段，对Mem进行操作，这里 Mem 用 C++写。
 
 module lsu (
-  input  wire        clk,
-  input  wire        commit_valid,
-  input  wire        load_read_en,
+  input  wire        active,
+  input  wire        req_valid,
   input  wire [31:0] address,
   input  wire [31:0] store_data,
   input  wire [2:0]  funct3,
   input  wire        mem_read,
   input  wire        mem_write,
+  output reg         resp_valid,
   output reg  [31:0] load_data
 );
   // 由访存控制子模块生成访问宽度、写掩码和加载扩展方式，再通过 DPI-C 访存。
@@ -23,6 +23,8 @@ module lsu (
   wire unsigned_load;
 
   reg [31:0] raw_data;
+  reg read_resp_valid;
+  reg write_resp_valid;
 
   mac mac(
     .funct3(funct3),
@@ -37,8 +39,16 @@ module lsu (
   // DPI-C Memory 总是读取包含目标地址的整个 32 位对齐字。
   always @(*) begin
     raw_data = 32'b0;
-    if (mem_read && load_read_en)
-      raw_data = pmem_read(address);
+    read_resp_valid = 1'b0;
+    write_resp_valid = 1'b0;
+
+    if (active && mem_read)
+      pmem_read(address, 1'b0, req_valid, raw_data, read_resp_valid);
+    else if (active && mem_write)
+      pmem_write(address, shifted_store_data, dpi_write_mask,
+                 req_valid, write_resp_valid);
+
+    resp_valid = read_resp_valid || write_resp_valid;
   end
 
   // address[1:0] 表示目标数据位于 32 位字中的字节位置。
@@ -75,9 +85,4 @@ module lsu (
     end
   end
 
-  // Store 只在指令提交的时钟沿写入，避免等待拍重复写 MMIO。
-  always @(posedge clk) begin
-    if (commit_valid && mem_write && write_mask != 4'b0000)
-      pmem_write(address, shifted_store_data, dpi_write_mask);
-  end
 endmodule
