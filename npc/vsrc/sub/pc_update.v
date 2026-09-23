@@ -1,5 +1,5 @@
 // PC 更新子模块，只声明接口，暂不实现。
-module pc_update (
+module ysyx_20230612_pc_update (
   input  wire        clk,
   input  wire        reset,
   input  wire        commit_valid,
@@ -10,7 +10,7 @@ module pc_update (
 
   always @(posedge clk) begin
         if(reset) begin
-            pc <= 32'h80000000;
+            pc <= 32'h30000000;
         end
         else if(commit_valid) begin
             if(redirect_valid)

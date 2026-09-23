@@ -1,5 +1,5 @@
 // 控制信号译码子模块，只声明接口，暂不实现。
-module decoder (
+module ysyx_20230612_decoder (
   input  wire [31:0] inst,
   output wire [2:0]  funct3,
   output reg  [2:0]  imm_type,

@@ -5,7 +5,7 @@
 // 010 B-type inst[31] | inst[7] | inst[30:25] | inst[11:8]
 // 011 J-type
 // 100 U-type
-module imm_extender (
+module ysyx_20230612_imm_extender (
   input  wire [31:7] inst,
   input  wire [2:0]  imm_type,
   output reg  [31:0] imm

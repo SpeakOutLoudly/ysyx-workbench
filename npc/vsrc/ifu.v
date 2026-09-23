@@ -1,24 +1,22 @@
-// 指令存储器子模块，只声明接口，暂不实现。
 `include "sub/pc_update.v"
-`include "sub/imem.v"
+// 原 DPI-C 取指模块已由 SoC 的 IFU 响应端口替代。
+// `include "sub/imem.v"
 // 取指阶段，包含 PC 更新和指令读取。
-module ifu (
+module ysyx_20230612_ifu (
   input  wire        clk,
   input  wire        reset,
+  input  wire        ifu_resp_valid,
+  input  wire [31:0] ifu_rdata,
   input  wire        lsu_resp_valid,
   input  wire        redirect_valid,
   input  wire [31:0] redirect_pc,
   output wire        commit_valid,
-  output wire        lsu_active,
+  output wire        ifu_req_valid,
   output wire        lsu_req_valid,
   output wire [31:0] pc,
   output wire [31:0] inst
 );
     wire mem_access;
-    wire ifu_active;
-    wire ifu_req_valid;
-    wire ifu_resp_valid;
-    wire [31:0] fetched_inst;
     reg [31:0] inst_reg;
     reg [1:0] state, nstate;
 
@@ -31,7 +29,7 @@ module ifu (
             state <= nstate;
             if (((state == _fetch_req) || (state == _fetch_wait)) &&
                 ifu_resp_valid)
-                inst_reg <= fetched_inst;
+                inst_reg <= ifu_rdata;
         end
     end
 
@@ -70,14 +68,9 @@ module ifu (
                            ((state == _exec) && mem_access && lsu_resp_valid) ||
                            ((state == _dmem_wait) && lsu_resp_valid));
     assign ifu_req_valid = !reset && (state == _fetch_req);
-    assign ifu_active = !reset &&
-                        ((state == _fetch_req) || (state == _fetch_wait));
-    assign lsu_active = !reset &&
-                        (((state == _exec) && mem_access) ||
-                         (state == _dmem_wait));
     assign lsu_req_valid = !reset && (state == _exec) && mem_access;
 
-    pc_update pu(
+    ysyx_20230612_pc_update pu(
         .clk(clk),
         .reset(reset),
         .commit_valid(commit_valid),
@@ -86,13 +79,5 @@ module ifu (
         .pc(pc)
     );
 
-    imem inst_mem(
-        .reset      (reset),
-        .active     (ifu_active),
-        .req_valid  (ifu_req_valid),
-        .pc         (pc),
-        .resp_valid (ifu_resp_valid),
-        .inst       (fetched_inst)
-    );
 
 endmodule

@@ -1,7 +1,7 @@
 // 写回阶段，选择最终结果并生成寄存器写回总线。
 `include "sub/mux.v"
 
-module wbu (
+module ysyx_20230612_wbu (
   input  wire [31:0] pc,
   input  wire [31:0] alu_result,
   input  wire [31:0] load_data,
@@ -20,7 +20,7 @@ module wbu (
   assign wb_rd = rd;
   assign wb_we = reg_write;
   
-  MuxKey #(3, 2, 32) writeback_mux (
+  ysyx_20230612_MuxKey #(3, 2, 32) writeback_mux (
     .out (wb_data),
     .key (wb_sel),
     .lut ({2'b00, alu_result, 2'b01, load_data, 2'b10, pc_plus_4})

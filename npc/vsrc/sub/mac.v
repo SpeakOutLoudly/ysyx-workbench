@@ -1,6 +1,6 @@
 // 访存控制子模块，只声明接口，暂不实现。
 // memory access controler
-module mac (
+module ysyx_20230612_mac (
   input  wire [2:0] funct3,
   input  wire [1:0] address_offset,
   input  wire       mem_read,

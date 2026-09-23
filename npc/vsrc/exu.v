@@ -2,7 +2,7 @@
 `include "sub/mux.v"
 `include "sub/alu.v"
 `include "sub/branch_unit.v"
-module exu (
+module ysyx_20230612_exu (
   input  wire [31:0] pc,
   input  wire [31:0] rs1_data,
   input  wire [31:0] rs2_data,
@@ -22,20 +22,20 @@ module exu (
 );
   wire [31:0] operand_a, operand_b;
 
-  MuxKey #(3, 2, 32) operand_a_mux(
+  ysyx_20230612_MuxKey #(3, 2, 32) operand_a_mux(
     .out(operand_a),
     .key(op1_sel),
     .lut({2'b00, rs1_data, 2'b01, 32'b0, 2'b10, pc})
   );
 
   // alu_src_imm = 0 时选择 rs2，等于 1 时选择立即数。
-  MuxKey #(2, 1, 32) operand_b_mux (
+  ysyx_20230612_MuxKey #(2, 1, 32) operand_b_mux (
     .out (operand_b),
     .key (alu_src_imm),
     .lut ({1'b1, imm, 1'b0, rs2_data})
   );
 
-  alu u_alu (
+  ysyx_20230612_alu u_alu (
     .operand_a (operand_a),
     .operand_b (operand_b),
     .alu_op    (alu_op),
@@ -45,7 +45,7 @@ module exu (
   // Store 写入内存的数据始终来自 rs2，不经过 ALU 操作数选择器。
   assign store_data = rs2_data;
 
-  branch_unit u_branch_unit (
+  ysyx_20230612_branch_unit u_branch_unit (
     .pc             (pc),
     .rs1_data       (rs1_data),
     .rs2_data       (rs2_data),

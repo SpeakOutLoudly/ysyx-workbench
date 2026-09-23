@@ -2,7 +2,7 @@
 `include "sub/RegisterFile.v"
 `include "sub/decoder.v"
 `include "sub/imm_extender.v"
-module idu (
+module ysyx_20230612_idu (
   input  wire        clk,
   input  wire [31:0] inst,
 
@@ -35,7 +35,7 @@ module idu (
   wire [2:0]imm_type;
   assign rd = inst[11:7];
   // 寄存器堆子模块
-  RegisterFile #(.ADDR_WIDTH(5), .DATA_WIDTH(32)) regfile(
+  ysyx_20230612_RegisterFile #(.ADDR_WIDTH(5), .DATA_WIDTH(32)) regfile(
       .clk(clk),
       .wdata(wb_data),
       .waddr(wb_rd),
@@ -48,13 +48,13 @@ module idu (
       .halt_code(halt_code)
   );
 
-  imm_extender extender(
+  ysyx_20230612_imm_extender extender(
     .inst(inst[31:7]),
     .imm_type(imm_type),
     .imm(imm)
   );
   // 控制信号译码子模块，只声明接口，暂不实现。
-  decoder de(
+  ysyx_20230612_decoder de(
       .inst(inst),
       .funct3(funct3),
       .imm_type(imm_type),

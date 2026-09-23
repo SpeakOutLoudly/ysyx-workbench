@@ -14,7 +14,7 @@ $(NPC_EXEC): $(VERILOG_DEPS) $(CPP_SRCS) $(CPP_HDRS)
 	@mkdir -p $(OBJ_DIR)
 	verilator -Wall -Wno-fatal -Wno-DECLFILENAME \
 	  --cc --trace-fst --exe --build -Ivsrc \
-	  --Mdir $(OBJ_DIR) --top-module top \
+	  --Mdir $(OBJ_DIR) --top-module ysyx_20230612 \
 	  $(VERILOG_SRCS) $(CPP_SRCS)
 
 sim:
@@ -23,7 +23,7 @@ sim:
 	@mkdir -p $(BUILD_DIR)/obj_dir
 	verilator -Wall -Wno-fatal -Wno-DECLFILENAME \
 	--cc --trace-fst --exe --build -Ivsrc \
-	--Mdir $(BUILD_DIR)/obj_dir --top-module top \
+	--Mdir $(BUILD_DIR)/obj_dir --top-module ysyx_20230612 \
 	 $(abspath vsrc/top.v) \
 	 $(abspath csrc/main.cpp) \
 	 $(abspath csrc/minirvEMU.cpp) \

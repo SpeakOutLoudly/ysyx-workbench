@@ -1,5 +1,5 @@
 // ALU 子模块。alu_op[4:1] 选择运算，alu_op[0] 区分 ADD/SUB 或 SRL/SRA。
-module alu (
+module ysyx_20230612_alu (
   input  wire [31:0] operand_a,
   input  wire [31:0] operand_b,
   input  wire [4:0]  alu_op,

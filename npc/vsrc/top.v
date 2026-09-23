@@ -6,9 +6,21 @@
 `include "vsrc/wbu.v"
 // 组合 5个 unit
 
-module top(
-  input  wire        clk,
+module ysyx_20230612(
+  input  wire        clock,
   input  wire        reset,
+  output wire        io_ifu_reqValid,
+  output wire [31:0] io_ifu_addr,
+  input  wire        io_ifu_respValid,
+  input  wire [31:0] io_ifu_rdata,
+  output wire        io_lsu_reqValid,
+  output wire [31:0] io_lsu_addr,
+  output wire [1:0]  io_lsu_size,
+  output wire        io_lsu_wen,
+  output wire [31:0] io_lsu_wdata,
+  output wire [3:0]  io_lsu_wmask,
+  input  wire        io_lsu_respValid,
+  input  wire [31:0] io_lsu_rdata,
   output wire        ebreak,
   output wire        exec_valid,
   output wire [31:0] debug_pc,
@@ -18,9 +30,7 @@ module top(
   wire [31:0] if_pc;
   wire [31:0] if_inst;
   wire        if_commit_valid;
-  wire        ls_active;
   wire        ls_req_valid;
-  wire        ls_resp_valid;
 
   wire [31:0] id_rs1_data;
   wire [31:0] id_rs2_data;
@@ -49,21 +59,26 @@ module top(
   wire [4:0]  wb_rd;
   wire [31:0] wb_data;
 
-  ifu u_ifu (
-    .clk            (clk),
+  ysyx_20230612_ifu u_ifu (
+    .clk            (clock),
     .reset          (reset),
-    .lsu_resp_valid (ls_resp_valid),
+    .ifu_resp_valid (io_ifu_respValid),
+    .ifu_rdata      (io_ifu_rdata),
+    .ifu_req_valid  (io_ifu_reqValid),
+    .lsu_resp_valid (io_lsu_respValid),
     .redirect_valid (ex_redirect_valid),
     .redirect_pc    (ex_redirect_pc),
     .commit_valid   (if_commit_valid),
-    .lsu_active     (ls_active),
     .lsu_req_valid  (ls_req_valid),
     .pc             (if_pc),
     .inst           (if_inst)
   );
 
-  idu u_idu (
-    .clk         (clk),
+  assign io_ifu_addr = if_pc;
+  assign io_lsu_reqValid = ls_req_valid;
+
+  ysyx_20230612_idu u_idu (
+    .clk         (clock),
     .inst        (if_inst),
     .commit_valid   (if_commit_valid),
     .wb_we       (wb_we),
@@ -88,7 +103,7 @@ module top(
     .halt_code   (halt_code)
   );
 
-  exu u_exu (
+  ysyx_20230612_exu u_exu (
     .pc             (if_pc),
     .rs1_data       (id_rs1_data),
     .rs2_data       (id_rs2_data),
@@ -106,19 +121,22 @@ module top(
     .redirect_pc    (ex_redirect_pc)
   );
 
-  lsu u_lsu (
-    .active     (ls_active),
-    .req_valid  (ls_req_valid),
+  ysyx_20230612_lsu u_lsu (
     .address    (ex_alu_result),
     .store_data (ex_store_data),
     .funct3     (id_funct3),
     .mem_read   (id_mem_read),
     .mem_write  (id_mem_write),
-    .resp_valid (ls_resp_valid),
+    .io_addr    (io_lsu_addr),
+    .io_size    (io_lsu_size),
+    .io_wen     (io_lsu_wen),
+    .io_wdata   (io_lsu_wdata),
+    .io_wmask   (io_lsu_wmask),
+    .io_rdata   (io_lsu_rdata),
     .load_data  (ls_load_data)
   );
 
-  wbu u_wbu (
+  ysyx_20230612_wbu u_wbu (
     .pc         (if_pc),
     .alu_result (ex_alu_result),
     .load_data  (ls_load_data),
