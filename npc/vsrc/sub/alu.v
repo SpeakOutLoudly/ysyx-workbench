@@ -19,6 +19,7 @@ module ysyx_20230612_alu (
       end
       4'b0100: result = operand_a ^ operand_b; // XOR
       4'b0110: result = operand_a | operand_b; // OR
+      4'b1010: result = operand_a | operand_b; // CSRRS: 旧 CSR | rs1
       4'b0111: result = operand_a & operand_b; // AND
       4'b0001: result = operand_a << operand_b[4:0]; // SLL/SLLI
       4'b0010: result = {31'b0, $signed(operand_a) < $signed(operand_b)}; // SLT/SLTI

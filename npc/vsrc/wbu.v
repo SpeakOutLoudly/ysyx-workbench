@@ -5,6 +5,7 @@ module ysyx_20230612_wbu (
   input  wire [31:0] pc,
   input  wire [31:0] alu_result,
   input  wire [31:0] load_data,
+  input  wire [31:0] csr_data,
   input  wire [1:0]  wb_sel,
   input  wire        reg_write,
   input  wire [4:0]  rd,
@@ -20,10 +21,11 @@ module ysyx_20230612_wbu (
   assign wb_rd = rd;
   assign wb_we = reg_write;
   
-  ysyx_20230612_MuxKey #(3, 2, 32) writeback_mux (
+  ysyx_20230612_MuxKey #(4, 2, 32) writeback_mux (
     .out (wb_data),
     .key (wb_sel),
-    .lut ({2'b00, alu_result, 2'b01, load_data, 2'b10, pc_plus_4})
+    .lut ({2'b00, alu_result, 2'b01, load_data, 2'b10, pc_plus_4,
+           2'b11, csr_data})
   );
 
 endmodule

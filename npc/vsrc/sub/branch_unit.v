@@ -1,4 +1,4 @@
-// 分支和跳转子模块，只声明接口，暂不实现。
+// 分支和跳转子模块
 module ysyx_20230612_branch_unit (
   input  wire [31:0] pc,
   input  wire [31:0] rs1_data,

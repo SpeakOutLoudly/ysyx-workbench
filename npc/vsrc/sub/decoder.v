@@ -8,6 +8,7 @@ module ysyx_20230612_decoder (
   output reg         mem_read,
   output reg         mem_write,
   output reg         reg_write,
+  output reg         csr_wen,
   output reg  [1:0]  wb_sel,
   output reg  [1:0]  op1_sel,
   output reg         branch,
@@ -32,6 +33,7 @@ module ysyx_20230612_decoder (
         mem_read   = 1'b0;
         mem_write  = 1'b0;
         reg_write  = 1'b0;
+        csr_wen    = 1'b0;
         wb_sel     = 2'b00;
         op1_sel     = 2'b00;
         branch     = 1'b0;
@@ -93,6 +95,16 @@ module ysyx_20230612_decoder (
                 wb_sel = 2'b00;
                 op1_sel = 2'b10;    // op1 为pc
                 imm_type = 3'b100;
+            end
+            7'b1110011: begin       // SYSTEM
+                // CSRRS: rd 取得旧 CSR 值，rs1=x0 时不写 CSR。
+                if (funct3 == 3'b010) begin
+                    alu_op = 5'b10100; // alu_op[4:1] == 4'b1010
+                    op1_sel = 2'b11;
+                    csr_wen = (inst[19:15] != 5'b0);
+                    reg_write = 1'b1;
+                    wb_sel = 2'b11;
+                end
             end
             default: begin          // 未知指令
                 alu_op = {1'b0, funct3, 1'b0};

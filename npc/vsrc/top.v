@@ -34,6 +34,7 @@ module ysyx_20230612(
 
   wire [31:0] id_rs1_data;
   wire [31:0] id_rs2_data;
+  wire [31:0] id_csr_data;
   wire [31:0] id_imm;
   wire [4:0]  id_rd;
   wire [2:0]  id_funct3;
@@ -79,13 +80,16 @@ module ysyx_20230612(
 
   ysyx_20230612_idu u_idu (
     .clk         (clock),
+    .reset       (reset),
     .inst        (if_inst),
     .commit_valid   (if_commit_valid),
     .wb_we       (wb_we),
     .wb_rd       (wb_rd),
     .wb_data     (wb_data),
+    .csr_in      (ex_alu_result),
     .rs1_data    (id_rs1_data),
     .rs2_data    (id_rs2_data),
+    .csr_data    (id_csr_data),
     .imm         (id_imm),
     .rd          (id_rd),
     .funct3      (id_funct3),
@@ -107,6 +111,7 @@ module ysyx_20230612(
     .pc             (if_pc),
     .rs1_data       (id_rs1_data),
     .rs2_data       (id_rs2_data),
+    .csr_data       (id_csr_data),
     .imm            (id_imm),
     .funct3         (id_funct3),
     .alu_op         (id_alu_op),
@@ -140,6 +145,7 @@ module ysyx_20230612(
     .pc         (if_pc),
     .alu_result (ex_alu_result),
     .load_data  (ls_load_data),
+    .csr_data   (id_csr_data),
     .wb_sel     (id_wb_sel),
     .reg_write  (id_reg_write),
     .rd         (id_rd),
@@ -151,4 +157,16 @@ module ysyx_20230612(
   assign debug_pc = if_pc;
   assign debug_inst = if_inst;
   assign exec_valid = !reset && (if_commit_valid);
+
+`ifdef SOC_SIM
+  // 仿真时只在 ebreak 指令提交的时钟沿结束程序。
+  always @(posedge clock) begin
+    if (exec_valid && ebreak) begin
+      if (halt_code == 32'b0)
+        $finish;
+      else
+        $fatal(1, "HIT BAD TRAP: halt_code=%0d", halt_code);
+    end
+  end
+`endif
 endmodule
